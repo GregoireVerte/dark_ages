@@ -1,5 +1,3 @@
-### Źródło danych: DOAJ (Directory of Open Access Journals)
-
 import requests
 import pandas as pd
 import time
@@ -11,37 +9,33 @@ def get_doaj_articles(query, page_size=100):
     print(f"Rozpoczynam pobieranie dla zapytania: '{query}'...")
     
     # Podstawowy URL do API wyszukiwania artykułów
-    url = "https://doaj.org/api/v4/articles"
+    url = "https://doaj.org/api/v2/search/articles/"
     
     # Parametry zapytania:
-    params = {
-            "query": query,     # v4 używa "query", nie "q"
-            "size": page_size,  # v4 używa "size", nie "pageSize"
-            "page": 1           # opcjonalnie, ale warto dodać
-        }
+    # 'q' to słowo kluczowe
+    # 'pageSize' to liczba wyników, którą chcemy otrzymać
+    params = {"q": query, "pageSize": page_size}
 
     try:
         # wykonaj zapytanie GET
         response = requests.get(url, params=params)
         
         # sprawdź, czy zapytanie się powiodło (status 200 OK)
-        response.raise_for_status()
+        response.raise_for_status() 
         
         # przetwórz odpowiedź JSON
-        data = response.json()
-        results = data.get("results", [])
+        data = response.json().get("results", [])
         
         records = []
-
         # przejdź przez każdy zwrócony artykuł
-        for article in results:
+        for article in data:
             bibjson = article.get("bibjson", {})
             
             #### wyciągnij licencję (ważne!) #### szukanie licencji w kilku miejscach dla pewności
-            license_info = bibjson.get("license", [])
+            license_info = bibjson.get("license")
             license_title = ""
-            if license_info and isinstance(license_info, list) and len(license_info) > 0:
-                license_title = license_info[0].get("type", "")
+            if license_info and isinstance(license_info, list):
+                license_title = license_info[0].get("title", "")
             
             # wyciągnij abstrakt (jeśli istnieje)
             abstract = bibjson.get("abstract", "")
@@ -51,12 +45,12 @@ def get_doaj_articles(query, page_size=100):
                 records.append({
                     "title": bibjson.get("title", ""),
                     "abstract": abstract,
-                    "keywords": ", ".join(bibjson.get("keywords", [])), 
+                    "keywords": ", ".join(bibjson.get("keywords", [])), # słowa kluczowe połączone w jeden string
                     "year": bibjson.get("year", ""),
                     "journal_title": bibjson.get("journal", {}).get("title", ""),
-                    "license": license_title, 
-                    "link": bibjson.get("link", [{}])[0].get("url", ""), 
-                    "query": query 
+                    "license": license_title, # plus informację o licencji
+                    "link": bibjson.get("link", [{}])[0].get("url", ""), # link do artykułu
+                    "query": query # zapis z jakiego zapytania pochodzi rekord
                 })
         
         print(f"Pobrano {len(records)} artykułów z abstraktami dla zapytania: '{query}'.")
@@ -64,8 +58,6 @@ def get_doaj_articles(query, page_size=100):
 
     except requests.exceptions.RequestException as e:
         print(f"Błąd podczas zapytania dla '{query}': {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"Odpowiedź serwera: {e.response.text[:500]}")
         return []
 
 # Główna część skryptu
@@ -109,27 +101,27 @@ if __name__ == "__main__":
         "germanic paganism",
         "slavic paganism",
         "medieval celts",
-        "norse paganism",
+        "norse paganism ",
         "foederati",
         "britannia",
         "suebi",
         "alans",
         "frisians",
         "sarmatians",
-        "period 400-1000",
+        "400-1000",
         "late roman empire",
         "barbarian kingdoms",
-        "arianism",
+        "arianism,",
         "magyars",
         "khazar",
         "umayyad",
         "charlemagne",
         "clovis",
         "theodoric the great",
-        "medieval constantinople",
+        "constantinople",
         "gothic war",
         "barbarian invasions",
-        "rome imperial borders",
+        "imperial borders",
         "late antiquity",
         "alaric",
         "fall of the western roman empire",
@@ -139,12 +131,12 @@ if __name__ == "__main__":
         "christianization",
         "migration period",
         "eastern roman empire",
-        "medieval rome",
-        "early bulgars",
+        "rome",
+        "bulgars",
         "danelag",
         "visigothic spain",
         "arthur",
-        "norman kingdom",
+        "norman",
         "hephthalites",
         "nomadic empire",
         "kidarites",
@@ -157,15 +149,15 @@ if __name__ == "__main__":
         "saka",
         "chionites",
         "bactria",
-        "roman gaul",
+        "gaul",
         "sasanian",
-        "persian empire",
-        "latin empire",
+        "persian",
+        "latin",
         "danes",
         "beowulf",
         "roman civil wars",
         "crossing of the rhine",
-        "rome imperial government",
+        "imperial government",
         "barbarian rulers",
         "roman heritage",
         "roman emperors",
@@ -192,119 +184,10 @@ if __name__ == "__main__":
         "norsemen",
         "balto-slavic",
         "proto-slavic",
-        "slavic settlement",
-        "getica",
-        "jordanes",
-        "sarmatae",
-        "widsith",
-        "samo",
-        "volga bulgaria",
-        "varangian",
-        "old great bulgaria",
-        "crusades",
-        "saqaliba",
-        "golden horde",
-        "kara-khanid",
-        "seljuk",
-        "kara khitai",
-        "great liao",
-        "khitan",
-        "kipchak",
-        "qangli",
-        "kangly",
-        "cuman",
-        "pechenegs",
-        "karluks",
-        "gokturks",
-        "hazaras",
-        "chagatai",
-        "turco-mongol",
-        "ilkhanate",
-        "timurids",
-        "jalayirid",
-        "sultanate of rum",
-        "turco-persian",
-        "anatolian beyliks",
-        "cilician armenia",
-        "empire of trebizond",
-        "yuan china",
-        "hunnic empire",
-        "vistula veneti",
-        "karamanids",
-        "aq qoyunlu",
-        "mamluks",
-        "qara qoyunlu",
-        "teke",
-        "aydin",
-        "menteshe",
-        "danishmend",
-        "mengujekids",
-        "saltukids",
-        "kayi tribe",
-        "ghaznavids",
-        "great moravia",
-        "kievan rus",
-        "baltic slavic piracy",
-        "rashidun caliphate",
-        "abbasid",
-        "muslim conquest of persia",
-        "muslim conquest of the levant",
-        "emperor heraclius",
-        "muslim conquest of egypt",
-        "muslim conquest of maghreb",
-        "ghassanids",
-        "lakhmids",
-        "assyrian church",
-        "nestorians",
-        "paulicianism",
-        "bogomilism",
-        "tondrakians",
-        "himyar",
-        "lotharingia",
-        "neustria",
-        "austrasia",
-        "kingdom of soissons",
-        "ambrosius aurelianus",
-        "gildas",
-        "arthurian period",
-        "de excidio et conquestu britanniae",
-        "medieval brittany",
-        "kingdom of galicia",
-        "marcomanni",
-        "marcus aurelius",
-        "ricimer",
-        "aetius",
-        "majorian",
-        "aegidius",
-        "syagrius",
-        "crisis of third century",
-        "constantine the great",
-        "catalaunian plains",
-        "ripuarian franks",
-        "salian franks",
-        "ammianus marcellinus",
-        "burgundy",
-        "strategikon",
-        "roxolani",
-        "iazyges",
-        "sabirs",
-        "onoghurs",
-        "utigurs",
-        "kutrigurs",
-        "akatziri",
-        "barsils",
-        "mishar tatars",
-        "mordvins",
-        "qaraqalpaqs",
-        "nogai horde",
-        "bashkirs",
-        "tengrism",
-        "uyghur khaganate",
-        "yenisei kyrgyz",
     ]
     
     # liczba artykułów do pobrania na każde słowo kluczowe
-    ARTICLES_PER_KEYWORD = 50
+    ARTICLES_PER_KEYWORD = 50 
     
     all_articles_data = []
     
