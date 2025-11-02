@@ -3,21 +3,22 @@
 import requests
 import pandas as pd
 import time
+from urllib.parse import quote  # do kodowania query w URL
 
 def get_doaj_articles(query, page_size=100):
     """
-    Pobiera artykuły (metadane i abstrakty) z DOAJ API dla danego zapytania.
+    Pobiera artykuły (metadane i abstrakty) z DOAJ API (v4) dla danego zapytania.
     """
     print(f"Rozpoczynam pobieranie dla zapytania: '{query}'...")
     
-    # Podstawowy URL do API wyszukiwania artykułów
-    url = "https://doaj.org/api/v4/articles"
+    # Podstawowy URL do API wyszukiwania artykułów; query w path, parametry w query string
+    encoded_query = quote(query)  # koduj spacje itp., np. "early medieval history" -> "early%20medieval%20history"
+    url = f"https://doaj.org/api/search/articles/{encoded_query}"
     
     # Parametry zapytania:
     params = {
-            "query": query,     # v4 używa "query", nie "q"
-            "size": page_size,  # v4 używa "size", nie "pageSize"
-            "page": 1           # opcjonalnie, ale warto dodać
+            "page": 1,
+            "pageSize": min(page_size, 100)  # max 100 w DOAJ
         }
 
     try:
@@ -35,29 +36,36 @@ def get_doaj_articles(query, page_size=100):
 
         # przejdź przez każdy zwrócony artykuł
         for article in results:
+            #### w v4 dane są w "bibjson"
             bibjson = article.get("bibjson", {})
+            abstract = bibjson.get("abstract", "")
+
+            if not abstract:
+                continue
             
-            #### wyciągnij licencję (ważne!) #### szukanie licencji w kilku miejscach dla pewności
+            #### wyciągnij licencję – lista obiektów (ważne!) #### szukanie licencji w kilku miejscach dla pewności
             license_info = bibjson.get("license", [])
             license_title = ""
             if license_info and isinstance(license_info, list) and len(license_info) > 0:
                 license_title = license_info[0].get("type", "")
             
-            # wyciągnij abstrakt (jeśli istnieje)
-            abstract = bibjson.get("abstract", "")
+            #### Link – lista obiektów
+            link_url = ""
+            links = bibjson.get("link", [])
+            if links and isinstance(links, list) and len(links) > 0:
+                link_url = links[0].get("url", "")
             
-            # dodaj rekord tylko jeśli ma abstrakt
-            if abstract:
-                records.append({
-                    "title": bibjson.get("title", ""),
-                    "abstract": abstract,
-                    "keywords": ", ".join(bibjson.get("keywords", [])), 
-                    "year": bibjson.get("year", ""),
-                    "journal_title": bibjson.get("journal", {}).get("title", ""),
-                    "license": license_title, 
-                    "link": bibjson.get("link", [{}])[0].get("url", ""), 
-                    "query": query 
-                })
+
+            records.append({
+                "title": bibjson.get("title", ""),
+                "abstract": abstract,
+                "keywords": ", ".join(bibjson.get("keywords", [])),
+                "year": bibjson.get("year", ""),
+                "journal_title": bibjson.get("journal", {}).get("title", ""),
+                "license": license_title,
+                "link": link_url,
+                "query": query
+            })
         
         print(f"Pobrano {len(records)} artykułów z abstraktami dla zapytania: '{query}'.")
         return records
@@ -71,7 +79,7 @@ def get_doaj_articles(query, page_size=100):
 # Główna część skryptu
 if __name__ == "__main__":
     
-    # SŁOWA KLUCZOWE DO WYSZYKIWANIA DANYCH
+    ## SŁOWA KLUCZOWE DO WYSZUKIWANIA DANYCH
     KEYWORDS_TO_SEARCH = [
         "early medieval history", 
         "barbarian migrations", 
@@ -316,7 +324,7 @@ if __name__ == "__main__":
         # dodaj pobrane rekordy do głównej listy
         all_articles_data.extend(articles)
         # krótka przerwa aby nie obciążać API
-        time.sleep(1) 
+        time.sleep(1)
     
     if all_articles_data:
         # konwersja listy słowników na DataFrame
