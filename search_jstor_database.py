@@ -2,6 +2,23 @@ import json
 import pandas as pd
 from pathlib import Path
 
+def safe_get_text(record, field_name):
+    """
+    Funkcja do wyciągania tekstu z pola,
+    które może być stringiem lub listą stringów
+    (łączy wszystkie elementy listy).
+    """
+    data = record.get(field_name, "")
+    
+    if isinstance(data, list):
+        # jeśli to lista łączy wszystkie jej elementy w jeden string # oddzielając je spacją
+        return " ".join(str(item) for item in data)
+    elif isinstance(data, str):
+        # jeśli to string po prostu go zwraca
+        return data
+    # w przeciwnym razie zwraca pusty string
+    return ""
+
 ## Ścieżka do pliku
 file_path = Path("jstor_metadata.jsonl")
 
@@ -249,47 +266,62 @@ keywords = [
     "yenisei kyrgyz",
 ]
 
-## tylko te rekordy wczytywane które pasują (bez ładowania całego pliku do RAM)
+## konwersja keywords na małe litery raz na początku (dla wydajności)
+keywords_lower = [kw.lower() for kw in keywords]
+
+## tylko te rekordy wczytywane które pasują
 matches = []
 
 
 with open(file_path, 'r', encoding='utf-8') as f:
     for i, line in enumerate(f):
-        if i % 500_000 == 0:
-            print(f"Przetworzono {i:,} rekordów...")
+        if i % 500_000 == 0 and i > 0: # drukuj co 500k ale nie na starcie
+            print(f"Przetworzono {i:,} rekordów... Znaleziono dotąd {len(matches):,} pasujących.")
             
         try:
             record = json.loads(line.strip())
-        except:
+        except Exception as e:
+            # print(f"Błąd w linii {i}: {e}") # odkomentuj, jeśli chcesz widzieć błędy JSON
             continue
-            
-        # szukanie w title + abstract + subject
-        text = " ".join([
-            record.get("title", [""])[0] if isinstance(record.get("title"), list) else str(record.get("title", "")),
-            record.get("abstract", "") or "",
-            " ".join(record.get("subject", []) or [])
-        ]).lower()
         
-        # sprawdzenie które keywordy pasują (sprawdzenie tylko raz)
-        matched_kws = [kw for kw in keywords if kw.lower() in text]
+        title_text = safe_get_text(record, "title")
+        abstract_text = safe_get_text(record, "abstract")
+        subject_text = " ".join(record.get("subject", []) or [])
+        
+        # szukanie w title + abstract + subject
+        text_to_search = f"{title_text} {abstract_text} {subject_text}".lower()
+        
+        # sprawdzenie które keywordy pasują
+        matched_kws = [kw for kw in keywords_lower if kw in text_to_search]
         
         # jeśli lista nie jest pusta to znaczy że jest trafienie
         if matched_kws:
-            # dodawanie tylko potrzebnych pól
+            
+            # pole "creator" to lista, więc łączymy je
+            creator_list = record.get("creator", [])
+            creator_text = "; ".join(creator_list) if creator_list else ""
+            
             matches.append({
-                "keyword": ", ".join(matched_kws), # zapisz wszystkie pasujące, np. "vikings, carolingian" itd.
-                "title": record.get("title", [""])[0] if isinstance(record.get("title"), list) else record.get("title", ""),
-                "abstract": record.get("abstract", ""),
-                "creator": "; ".join(record.get("creator", []) or []),
-                "date": record.get("date", ""),
-                "journal": record.get("is_part_of", ""),
-                "doi": record.get("doi", ""),
-                "language": record.get("language", "")
+                "keyword": ", ".join(matched_kws), 
+                "title": title_text,
+                "abstract": abstract_text,
+                "creator": creator_text,
+                "date": safe_get_text(record, "date"),
+                "journal": safe_get_text(record, "is_part_of"),
+                "doi": safe_get_text(record, "doi"),
+                "language": safe_get_text(record, "language")
             })
 
+print("\nZakończono przetwarzanie pliku.")
+
 #### zapis do CSV
-df = pd.DataFrame(matches)
-df.to_csv("jstor_articles.csv", index=False, encoding="utf-8")
-print(f"\nZnaleziono {len(df):,} rekordów → jstor_articles.csv")
-print("Przykłady:")
-print(df.head(10)[["title", "date", "keyword"]])
+if matches:
+    print(f"Rozpoczynam zapisywanie {len(matches):,} rekordów do pliku CSV...")
+    df = pd.DataFrame(matches)
+
+    df.to_csv("jstor_articles.csv", index=False, encoding="utf-8")
+    print(f"\nZnaleziono i zapisano {len(df):,} rekordów → jstor_articles.csv")
+    print("Przykłady:")
+    print(df.head(10)[["title", "date", "keyword"]])
+else:
+    print("Nie znaleziono żadnych pasujących rekordów.")
