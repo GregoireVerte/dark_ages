@@ -6,6 +6,8 @@ from urllib.parse import quote_plus
 from tqdm import tqdm
 import random
 
+HEADERS = {'User-Agent': 'ArxivResearcher/1.0 (trevor84@wp.pl)'}
+
 # keywords
 keywords = [
     "fall of rome",
@@ -274,7 +276,7 @@ keywords = [
 # konfiguracja
 BASE_URL = "http://export.arxiv.org/api/query"
 MAX_RESULTS_PER_QUERY = 2000   # maksymalnie 2000 na jedno zapytanie
-SLEEP_BETWEEN_QUERIES = 12.0    # 12 sekund – limity arXiv
+SLEEP_BETWEEN_QUERIES = 15.0    # 15 sekund – limity arXiv
 OUTPUT_FILE = "arxiv_articles.csv"
 
 
@@ -292,7 +294,7 @@ def search_arxiv(keyword, start=0, retry=0):
     
     for attempt in range(5):  # max 5 prób
         try:
-            response = requests.get(url, timeout=60)  # dłuższy timeout
+            response = requests.get(url, timeout=60, headers=HEADERS)  # dłuższy timeout
             if response.status_code == 429 or response.status_code >= 500:
                 wait = (2 ** attempt) + random.random() * 5
                 print(f"429/5xx dla '{keyword}' – czekam {wait:.1f}s (proba {attempt+1})")
