@@ -4,7 +4,7 @@ import time
 import os
 
 
-CORE_API_KEY = "4fzHBxIQP8e72NqKYrGhZREoc15mu6Sa" #### ENTER_API_KEY
+CORE_API_KEY = "API_KEY" #### ENTER_API_KEY
 
 
 def get_core_articles(query, page_size=25, api_key=None):

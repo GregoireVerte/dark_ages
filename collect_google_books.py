@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 import os
 
 ## konfiguracja
-API_KEY = "AIzaSyDvLcwvENXX5DLTeixuhyR5Qd0nPBaIpr4"
+API_KEY = "API_KEY"
 
 
 OUTPUT_CSV = "google_books_articles.csv"

@@ -8,7 +8,7 @@ import json
 
 
 #### konfiguracja
-API_KEY = "4f6209746fb37e733b2b0ae02e2b3b832008"  # z NCBI
+API_KEY = "API_KEY"  # z NCBI
 EMAIL = "trevor84wppl@gmail.com"  # wymagane przez NCBI
 
 BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
