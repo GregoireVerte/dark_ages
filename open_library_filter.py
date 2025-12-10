@@ -5,6 +5,7 @@ import time
 from typing import List, Dict
 from tqdm import tqdm
 
+
 ## lista keywords
 KEYWORDS = [
     "ayyubid",
@@ -270,9 +271,11 @@ KEYWORDS = [
     "yenisei kyrgyz",
 ]
 
+
 DUMP_FILE = "ol_dump_works_2025-11-30.txt"
 OUTPUT_CSV = "open_library_articles.csv"
-CHUNK_SIZE = 100000  ### przetwarzanie po chunkach by nie zjeść RAM
+CHUNK_SIZE = 500000  ### przetwarzanie po chunkach by nie zjeść RAM
+
 
 def extract_record(json_str: str) -> Dict:
     """Wyciągnij kluczowe pola z JSON."""
@@ -280,28 +283,41 @@ def extract_record(json_str: str) -> Dict:
         data = json.loads(json_str)
         if data.get('type', {}).get('key') != '/type/work':
             return None
+
+        title = data.get('title', '')
+        title_lower = title.lower()
+        subjects = [s.lower() for s in data.get('subjects', [])]
+
+        ### precyzyjny filtr (wszystkie słowa z frazy muszą być)
+        matched_keyword = None
+        for kw in KEYWORDS:
+            if all(word in title_lower or any(word in s for s in subjects) for word in kw.lower().split()):
+                matched_keyword = kw
+                break
+        if not matched_keyword:
+            return None
+
+        ## description
         desc = data.get('description', '')
         if isinstance(desc, dict):
             desc = desc.get('value', '')
-        subjects = data.get('subjects', [])
-        ### Filtr: jeśli keyword w subjects lub title
-        title_lower = data.get('title', '').lower()
-        if any(kw.lower() in title_lower or any(kw.lower() in s.lower() for s in subjects) for kw in KEYWORDS):
-            return {
-                'key': data.get('key', ''),
-                'title': data.get('title', ''),
-                'authors': ', '.join([a.get('author', {}).get('key', '') for a in data.get('authors', [])]) if data.get('authors') else ', '.join(data.get('author_keys', [])),
-                'subjects': ', '.join(subjects),
-                'description': desc,
-                'publish_year': data.get('first_publish_year')
-            }
-    except json.JSONDecodeError:
-        pass
-    return None
+        desc = str(desc).replace('\n', ' ').replace('\r', ' ')[:4000]  #### obcinanie i czyszczenie
+
+        return {
+            'matched_keyword': matched_keyword,
+            'title': title,
+            'authors': ', '.join([a.get('author', {}).get('key', '').split('/')[-1] for a in data.get('authors', [])]),
+            'subjects': ' | '.join(data.get('subjects', [])[:50]),  ### separator inny niż przecinek
+            'description': desc,
+            'publish_year': data.get('first_publish_year') or data.get('created', {}).get('value', '')[:4]
+        }
+    except:
+        return None
+
 
 def main():
     all_records = []
-    total_lines = 3000000  ### przybliżona liczba linii w works dump
+    total_lines = 40560519  ### liczba linii w works dump
     with tqdm(total=total_lines, desc="Przetwarzanie dumpa", unit="linii") as pbar:
         ### wczytanie TSV po chunkach (kolumny: type, key, revision, last_modified, JSON)
         for chunk in pd.read_csv(DUMP_FILE, sep='\t', header=None, names=['type', 'key', 'revision', 'last_modified', 'JSON'], chunksize=CHUNK_SIZE, low_memory=False):
@@ -310,7 +326,6 @@ def main():
                 if record:
                     all_records.append(record)
                 pbar.update(1)  ### aktualizuje co linię (wolniej niż co chunk)
-            time.sleep(0.2)  ### lekka pauza
     
     if all_records:
         df = pd.DataFrame(all_records)
