@@ -49,20 +49,25 @@ KEYWORDS = [
     "early middle ages",
     "byzantium",
     "dark ages",
-    "anglo-saxon",
+    "anglo-saxon history",
     "saxons",
-    "angles",
+    "angles in britannia",
     "jutes",
     "early slavs",
     "romano-britons",
     "romano-british",
-    "huns",
+    "history huns",
+    "huns history",
+    "black huns",
+    "white huns",
     "goths",
     "ostrogoths",
     "visigoths",
-    "franks",
-    "alemanni",
-    "vandal",
+    "history franks",
+    "franks history",
+    "alemanni history",
+    "history alemanni",
+    "vandals history",
     "gepids",
     "lombards",
     "attila",
@@ -70,8 +75,9 @@ KEYWORDS = [
     "rugians",
     "sciri",
     "herules",
-    "bavarians",
-    "avars",
+    "bavarians history",
+    "avars history",
+    "history avars",
     "burgundians",
     "viking",
     "germanic paganism",
@@ -79,17 +85,19 @@ KEYWORDS = [
     "medieval celts",
     "norse paganism",
     "foederati",
-    "britannia",
-    "suebi",
-    "alans",
+    "roman britannia",
+    "suebi history",
+    "alans history",
+    "history alans",
     "frisians",
     "sarmatians",
     "period 400-1000",
     "late roman empire",
     "barbarian kingdoms",
-    "arianism",
+    "arianism christianity",
     "magyars",
     "khazar",
+    "khazars",
     "umayyad",
     "charlemagne",
     "clovis",
@@ -110,8 +118,9 @@ KEYWORDS = [
     "medieval rome",
     "early bulgars",
     "danelag",
+    "danelaw",
     "visigothic spain",
-    "arthur",
+    "king arthur history",
     "norman kingdom",
     "hephthalites",
     "nomadic empire",
@@ -122,14 +131,14 @@ KEYWORDS = [
     "xianbei",
     "xiongnu",
     "yuezhi",
-    "saka",
+    "saka people",
     "chionites",
     "bactria",
     "roman gaul",
     "sasanian",
     "persian empire",
     "latin empire",
-    "danes",
+    "early danes",
     "beowulf",
     "roman civil wars",
     "crossing of the rhine",
@@ -139,7 +148,7 @@ KEYWORDS = [
     "roman emperors",
     "nicene christianity",
     "gothic kingdoms",
-    "han china",
+    "han dynasty",
     "tang china",
     "roman usurpers",
     "magister militum",
@@ -149,14 +158,15 @@ KEYWORDS = [
     "gaelic tribes",
     "heptarchy",
     "bretwalda",
-    "old english",
+    "old english period",
     "kingdom of east anglia",
     "germanic settlement",
     "geats",
-    "venedi",
-    "wends",
+    "vistula venedi",
+    "venedi slavs",
+    "wends history",
     "sclaveni",
-    "antes",
+    "antes slavs",
     "norsemen",
     "balto-slavic",
     "proto-slavic",
@@ -165,7 +175,8 @@ KEYWORDS = [
     "jordanes",
     "sarmatae",
     "widsith",
-    "samo",
+    "king samo",
+    "samo empire",
     "volga bulgaria",
     "varangian",
     "old great bulgaria",
@@ -180,7 +191,7 @@ KEYWORDS = [
     "kipchak",
     "qangli",
     "kangly",
-    "cuman",
+    "cumans history",
     "pechenegs",
     "karluks",
     "gokturks",
@@ -202,8 +213,8 @@ KEYWORDS = [
     "aq qoyunlu",
     "mamluks",
     "qara qoyunlu",
-    "teke",
-    "aydin",
+    "teke beylik",
+    "aydin beylik",
     "menteshe",
     "danishmend",
     "mengujekids",
@@ -251,7 +262,8 @@ KEYWORDS = [
     "ripuarian franks",
     "salian franks",
     "ammianus marcellinus",
-    "burgundy",
+    "burgundy history",
+    "history burgundy",
     "strategikon",
     "roxolani",
     "iazyges",
@@ -285,15 +297,18 @@ def extract_record(json_str: str) -> Dict:
             return None
 
         title = data.get('title', '')
-        title_lower = title.lower()
-        subjects = [s.lower() for s in data.get('subjects', [])]
-
-        ### precyzyjny filtr (wszystkie słowa z frazy muszą być)
+        #### ostry filtr –-> cała fraza musi być w tytule lub w którymś subject
         matched_keyword = None
+        title_lower = title.lower()
+        subjects_lower = [s.lower() for s in data.get('subjects', [])]
+        full_text = title_lower + " " + " ".join(subjects_lower)
+
         for kw in KEYWORDS:
-            if all(word in title_lower or any(word in s for s in subjects) for word in kw.lower().split()):
+            phrase = kw.lower()
+            if phrase in full_text:  ##### cała fraza jako ciąg znaków
                 matched_keyword = kw
                 break
+
         if not matched_keyword:
             return None
 
@@ -306,7 +321,7 @@ def extract_record(json_str: str) -> Dict:
         return {
             'matched_keyword': matched_keyword,
             'title': title,
-            'authors': ', '.join([a.get('author', {}).get('key', '').split('/')[-1] for a in data.get('authors', [])]),
+            'authors': ', '.join([a.get('name', '') if isinstance(a, dict) and 'name' in a else a.get('author', {}).get('key', '').split('/')[-1] if isinstance(a.get('author'), dict) else '' for a in data.get('authors', [])]),
             'subjects': ' | '.join(data.get('subjects', [])[:50]),  ### separator inny niż przecinek
             'description': desc,
             'publish_year': data.get('first_publish_year') or data.get('created', {}).get('value', '')[:4]
