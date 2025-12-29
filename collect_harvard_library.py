@@ -447,9 +447,9 @@ for kw in keywords:
         start += params["limit"]
         time.sleep(3)  ### bezpieczny delay
 
-# deduplikacja (po title + authors)
+
 df = pd.DataFrame(all_records)
-df.drop_duplicates(subset=["title", "authors"], inplace=True)
+
 
 # zapis
 df.to_csv("harvard_articles.csv", index=False, encoding="utf-8")
