@@ -4,6 +4,7 @@ import requests
 from xml.etree import ElementTree as ET
 from urllib.parse import quote
 import datetime
+import random
 
 # konfiguracja
 SRU_BASE = "https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2"
@@ -13,6 +14,13 @@ NS = {
     "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
     "diag": "http://www.loc.gov/zing/srw/diagnostic/"
 }
+
+# rotacja User-Agent
+user_agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
+]
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -26,43 +34,43 @@ headers = {
 
 KEYWORDS = [
     ## tylko francuskie wersje keywords
-    "carolingien",
-    "époque carolingienne",
-    "renaissance carolingienne",
+    #"carolingien",
+    #"époque carolingienne",
+    #"renaissance carolingienne",
+    #"dynastie mérovingienne",
+    #"clovis",
+    #"charlemagne",
+    #"pépin le bref",
+    #"charles martel",
+    #"chute de rome",
+    #"fin de l'empire romain",
+    #"chute de l'empire romain d'occident",
+    #"invasions barbares",
+    #"migrations barbares",
+    #"peuples barbares",
+    #"royaumes barbares",
+    #"royaumes romano-germaniques",
+    #"période des grandes invasions",
+    #"bas-empire",
+    #"völkerwanderung",
+    #"wisigoth",
+    #"ostrogoth",
+    #"goth",
+    #"royaume wisigoth",
+    #"royaume ostrogoth",
+    #"théodoric le grand",
+    #"alaric",
+    #"vandales",
+    #"royaume vandale",
+    #"afrique vandale",
+    #"lombards",
+    #"royaume lombard",
+    #"italie lombarde",
+    #"francs",
+    #"royaume franc",
+    #"francs saliens",
+    #"francs ripuaires",
     "mérovingien",
-    "dynastie mérovingienne",
-    "clovis",
-    "charlemagne",
-    "pépin le bref",
-    "charles martel",
-    "chute de rome",
-    "fin de l'empire romain",
-    "chute de l'empire romain d'occident",
-    "invasions barbares",
-    "migrations barbares",
-    "peuples barbares",
-    "royaumes barbares",
-    "royaumes romano-germaniques",
-    "période des grandes invasions",
-    "bas-empire",
-    "völkerwanderung",
-    "wisigoth",
-    "ostrogoth",
-    "goth",
-    "royaume wisigoth",
-    "royaume ostrogoth",
-    "théodoric le grand",
-    "alaric",
-    "vandales",
-    "royaume vandale",
-    "afrique vandale",
-    "lombards",
-    "royaume lombard",
-    "italie lombarde",
-    "francs",
-    "royaume franc",
-    "francs saliens",
-    "francs ripuaires",
     "austrasie",
     "neustrie",
     "burgondes",
@@ -255,9 +263,9 @@ KEYWORDS = [
 ]
 
 # ograniczenia bezpieczeństwa
-MAX_RECORDS_PER_REQUEST = 80      # ile rekordów w jednym zapytaniu SRU
-MAX_TOTAL_PER_KEYWORD = 2500       # max ile rekordów zbiera dla jednego słowa kluczowego
-SLEEP_BETWEEN_REQUESTS = 5.0
+MAX_RECORDS_PER_REQUEST = 50      # ile rekordów w jednym zapytaniu SRU
+MAX_TOTAL_PER_KEYWORD = 1500       # max ile rekordów zbiera dla jednego słowa kluczowego
+##SLEEP_BETWEEN_REQUESTS = 8.0
 
 def sru_search(keyword, start_record=1, max_records=MAX_RECORDS_PER_REQUEST):
     """
@@ -273,14 +281,16 @@ def sru_search(keyword, start_record=1, max_records=MAX_RECORDS_PER_REQUEST):
     }
 
     try:
-        time.sleep(2.5)  # dodatkowe opóźnienie przed każdym zapytaniem
+        time.sleep(random.uniform(3.0, 5.0))  # dodatkowe opóźnienie przed każdym zapytaniem
+        headers['User-Agent'] = random.choice(user_agents)   ## przed każdym requestem
         r = requests.get(SRU_BASE, params=params, headers=headers, timeout=12)
         r.raise_for_status()
         
         root = ET.fromstring(r.content)
         
         # liczba wszystkich pasujących rekordów w całym zbiorze
-        total = int(root.find(".//srw:numberOfRecords", NS).text or 0)
+        total_elem = root.find(".//srw:numberOfRecords", NS)
+        total = int(total_elem.text) if total_elem is not None and total_elem.text else 0
         
         # lista rekordów z tej strony
         records = []
@@ -356,16 +366,17 @@ def main():
                 break
                 
             start = next_start
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+            ##time.sleep(SLEEP_BETWEEN_REQUESTS)
+            time.sleep(random.uniform(8.0, 12.0))
     
     # zapis do CSV
     if results:
         keys = ["keyword", "title", "creator", "abstract", "date", "subject", "publisher", "id"]
-        with open("gallica_articles.csv", "w", newline="", encoding="utf-8") as f:
+        with open("gallica_articles_2turn.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=keys)
             writer.writeheader()
             writer.writerows(results)
-        print(f"\nZapisano {len(results)} rekordów -> gallica_articles.csv")
+        print(f"\nZapisano {len(results)} rekordów -> gallica_articles_2turn.csv")
     else:
         print("\nNie udało się znaleźć żadnych pasujących rekordów.")
 
