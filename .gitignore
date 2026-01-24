@@ -8,3 +8,6 @@
 /ol_dump_authors_2025-11-30.txt
 mlruns/
 chroma_db/
+.env
+*.env
+.ipynb_checkpoints
