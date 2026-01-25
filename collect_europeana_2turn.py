@@ -14,7 +14,7 @@ if not API_KEY:
 
 BASE_URL = "https://api.europeana.eu/record/search.json"
 ROWS_PER_PAGE = 100          # max 100
-MAX_RECORDS_PER_KEYWORD = 500  # limit na hasło
+MAX_RECORDS_PER_KEYWORD = 1500  # limit na hasło
 
 # keywords
 KEYWORDS = [
@@ -319,12 +319,12 @@ FIELDS = (
 
 def search_europeana(query, api_key, cursor="*"):
     params = {
-        "query": f'"{query}"',   # automatycznie opakowuje w double quotes --> exact phrase
+        "query": query,   ### zamiast f'"{query}"'  ## tym razem bez exact phrase
         "wskey": api_key,
         "rows": ROWS_PER_PAGE,
         "cursor": cursor,
         "profile": "rich",           # daje proxy_dc_* pola (lepsze opisy)
-        "qf": 'TYPE:TEXT AND (YEAR:[250 TO 1400] OR YEAR:[1980 TO 2026])',          # tu filtry
+        "qf": 'TYPE:TEXT AND (YEAR:[250 TO 1400] OR YEAR:[1950 TO 2026])',          # tu filtry
         "fields": FIELDS,
     }
     response = requests.get(BASE_URL, params=params)
@@ -414,11 +414,11 @@ def main():
     # zapis do CSV
     if all_rows:
         headers = ["keyword", "title", "creator", "abstract", "year", "subject", "publisher", "id"]
-        with open("europeana_articles.csv", "w", newline="", encoding="utf-8") as f:
+        with open("europeana_articles_2turn.csv", "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=headers)
             writer.writeheader()
             writer.writerows(all_rows)
-        print(f"\nZapisano {len(all_rows)} rekordów do europeana_articles.csv")
+        print(f"\nZapisano {len(all_rows)} rekordów do europeana_articles_2turn.csv")
     else:
         print("Nie pobrano żadnych rekordów.")
 
