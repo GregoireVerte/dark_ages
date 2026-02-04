@@ -12,3 +12,4 @@ chroma_db/
 *.env
 .ipynb_checkpoints
 /openalex_articles.csv
+/openalex_articles_fixed.csv
